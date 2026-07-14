@@ -1,0 +1,138 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Modelo: Pedidos de Produção
+model Pedido {
+  id              String   @id @default(cuid())
+  cliente         String
+  peca            String
+  custoFilamento  Float    @default(0)
+  custoEnergia    Float    @default(0)
+  custoHoraHomem  Float    @default(0)
+  custoManutencao Float    @default(0)
+  custoTotal      Float    @default(0)
+  venda           Float
+  prazo           String
+  status          String   @default("RECEBIDO") // RECEBIDO | EM_IMPRESSAO | ACABAMENTO | PRONTO | ENTREGUE
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
+
+  @@index([cliente])
+  @@index([status])
+}
+
+// Modelo: Insumos e Estoque
+model Insumo {
+  id                String    @id @default(cuid())
+  nome              String    @db.VarChar(255)
+  tipo              String    // FILAMENTO | COLA | OUTROS
+  cor               String?   @db.VarChar(100)
+  quantidadeGrams   Decimal   @db.Decimal(10, 2)
+  unidadeMedida     String    @default("G") // G | UN | ML
+  minGrams          Decimal   @db.Decimal(10, 2)
+  preco             Decimal   @db.Decimal(10, 2)
+  criadoEm          DateTime  @default(now())
+  atualizadoEm      DateTime  @updatedAt
+
+  @@index([tipo])
+  @@index([nome])
+}
+
+// Modelo: Transações Financeiras
+model Transacao {
+  id          String   @id @default(cuid())
+  data        String
+  tipo        String   // ENTRADA | SAIDA
+  categoria   String   // Filamento | Energia | Hora-Homem | Manutencao Maquina | Lucro Liquido | etc
+  descricao   String
+  valor       Float
+  pedidoId    String?
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([tipo])
+  @@index([data])
+  @@index([categoria])
+  @@index([pedidoId])
+}
+
+// Modelo: Clientes e Leads (CRM)
+model ClienteLead {
+  id                      String    @id @default(cuid())
+  nome                    String    @db.VarChar(255)
+  contato                 String    @db.VarChar(255)
+  interessePrincipal      String    @db.VarChar(255)
+  dataUltimaCompra        DateTime  @db.Date
+  frequenciaRecorrencia   Int       // em dias
+  statusLead              String    @default("FRIO") // FREGUES | LEAD_AQUECIDO | FRIO
+  criadoEm                DateTime  @default(now())
+  atualizadoEm            DateTime  @updatedAt
+
+  @@index([nome])
+  @@index([statusLead])
+  @@index([dataUltimaCompra])
+}
+
+// Modelo: Catálogo de Produtos (STLs/Modelos Salvos)
+model CatalogoProduto {
+  id             String   @id @default(cuid())
+  nome           String   @db.VarChar(255)
+  descricao      String?  @db.Text
+  pesoGrams      Decimal  @db.Decimal(10, 2)
+  tempoImpressao Decimal  @db.Decimal(10, 2) // em horas
+  precoSugerido  Decimal  @db.Decimal(10, 2)
+  categoria      String   @db.VarChar(100)
+  linkStl        String?  @db.Text
+
+  criadoEm       DateTime @default(now())
+  atualizadoEm   DateTime @updatedAt
+
+  @@index([categoria])
+  @@index([nome])
+}
+
+model FechamentoCaixa {
+  id              String   @id @default(cuid())
+  tipoPeriodo     String   // DIARIO | SEMANAL | MENSAL
+  dataInicio      String
+  dataFim         String
+  saldoCalculado  Float
+  saldoDeclarado  Float
+  diferenca       Float
+  status          String   // ABERTO | CONCLUIDO
+  observacao      String?
+  fechadoPor      String   @default("Sistema")
+  caixaFilamento  Float
+  caixaEnergia    Float
+  caixaHoraHomem  Float
+  caixaManutencao Float
+  caixaLucro      Float
+  criadoEm        DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tipoPeriodo])
+  @@index([status])
+  @@index([dataFim])
+}
+
+model Usuario {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String   @unique
+  senha     String   // Senha criptografada (hash)
+  cargo     String   @default("SOCIO") // "ADMIN" | "SOCIO" | "OPERADOR"
+  criadoEm  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
