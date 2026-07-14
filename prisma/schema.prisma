@@ -18,6 +18,9 @@ model Pedido {
   id              String   @id @default(cuid())
   cliente         String
   peca            String
+  pesoPecaGrams   Float    @default(0)
+  filamentoCor    String?  @db.VarChar(100)
+  estoqueBaixado  Boolean  @default(false)
   custoFilamento  Float    @default(0)
   custoEnergia    Float    @default(0)
   custoHoraHomem  Float    @default(0)
@@ -39,6 +42,7 @@ model Insumo {
   nome              String    @db.VarChar(255)
   tipo              String    // FILAMENTO | COLA | OUTROS
   cor               String?   @db.VarChar(100)
+  statusEstoque     String    @default("NORMAL") // NORMAL | ESTOQUE_BAIXO
   quantidadeGrams   Decimal   @db.Decimal(10, 2)
   unidadeMedida     String    @default("G") // G | UN | ML
   minGrams          Decimal   @db.Decimal(10, 2)

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+const hojeISO = () => new Date().toISOString().split("T")[0];
+
 /**
  * GET /api/pedidos/[id]
  * Recupera um pedido específico
@@ -48,17 +50,79 @@ export async function PATCH(
 
     const novoStatus = body.status || pedidoAtual.status;
 
-    const pedidoAtualizado = await prisma.$transaction(async (tx) => {
-      const atualizado = await tx.pedido.update({
+    const resultado = await prisma.$transaction(async (tx) => {
+      let atualizado = await tx.pedido.update({
         where: { id },
         data: {
           status: novoStatus,
         },
       });
 
+      let estoqueAlerta: string | null = null;
+
+      const virouEmImpressao = pedidoAtual.status !== "EM_IMPRESSAO" && novoStatus === "EM_IMPRESSAO";
+      const podeBaixarEstoque = virouEmImpressao && !pedidoAtual.estoqueBaixado;
+
+      if (podeBaixarEstoque) {
+        const consumoGrams = Math.max(0, Number(atualizado.pesoPecaGrams || 0));
+
+        if (consumoGrams > 0) {
+          const corFilamento = atualizado.filamentoCor?.trim() || null;
+          const insumoFilamento = await tx.insumo.findFirst({
+            where: {
+              tipo: "FILAMENTO",
+              ...(corFilamento
+                ? {
+                    cor: {
+                      equals: corFilamento,
+                      mode: "insensitive",
+                    },
+                  }
+                : {}),
+            },
+            orderBy: { quantidadeGrams: "desc" },
+          });
+
+          if (insumoFilamento) {
+            const qtdAtual = Number(insumoFilamento.quantidadeGrams);
+            const qtdMin = Number(insumoFilamento.minGrams);
+            const novaQuantidade = Math.max(0, qtdAtual - consumoGrams);
+            const novoStatusEstoque = novaQuantidade <= qtdMin ? "ESTOQUE_BAIXO" : "NORMAL";
+
+            await tx.insumo.update({
+              where: { id: insumoFilamento.id },
+              data: {
+                quantidadeGrams: novaQuantidade,
+                statusEstoque: novoStatusEstoque,
+              },
+            });
+
+            await tx.transacao.create({
+              data: {
+                data: hojeISO(),
+                tipo: "SAIDA",
+                categoria: "Filamento",
+                descricao: `Baixa automática de estoque do pedido ${atualizado.peca} (${atualizado.cliente})`,
+                valor: (consumoGrams / 1000) * Number(insumoFilamento.preco),
+                pedidoId: atualizado.id,
+              },
+            });
+
+            if (novoStatusEstoque === "ESTOQUE_BAIXO") {
+              estoqueAlerta = `Estoque baixo: ${insumoFilamento.nome}${insumoFilamento.cor ? ` (${insumoFilamento.cor})` : ""}. Reposição recomendada.`;
+            }
+          }
+        }
+
+        atualizado = await tx.pedido.update({
+          where: { id },
+          data: { estoqueBaixado: true },
+        });
+      }
+
       const virouEntregue = pedidoAtual.status !== "ENTREGUE" && novoStatus === "ENTREGUE";
       if (!virouEntregue) {
-        return atualizado;
+        return { pedido: atualizado, estoqueAlerta };
       }
 
       const provisoesExistentes = await tx.transacao.count({ where: { pedidoId: id } });
@@ -114,10 +178,10 @@ export async function PATCH(
         ],
       });
 
-      return atualizado;
+      return { pedido: atualizado, estoqueAlerta };
     });
 
-    return NextResponse.json(pedidoAtualizado);
+    return NextResponse.json(resultado);
   } catch (error) {
     console.error("Erro ao atualizar pedido:", error);
     return NextResponse.json(

@@ -81,6 +81,8 @@ export async function POST(request: NextRequest) {
           ? ((precoAtual * quantidadeAtual) + (precoNovo * quantidadeNova)) / novaQuantidadeTotal
           : precoNovo;
 
+      const statusEstoque = novaQuantidadeTotal <= minNovo ? "ESTOQUE_BAIXO" : "NORMAL";
+
       const insumoAtualizado = await prisma.insumo.update({
         where: { id: insumoExistente.id },
         data: {
@@ -90,11 +92,14 @@ export async function POST(request: NextRequest) {
           tipo,
           unidadeMedida: unidadeNormalizada,
           cor: corNormalizada,
+          statusEstoque,
         },
       });
 
       return NextResponse.json(insumoAtualizado, { status: 200 });
     }
+
+    const statusEstoque = quantidadeNova <= minNovo ? "ESTOQUE_BAIXO" : "NORMAL";
 
     const novoInsumo = await prisma.insumo.create({
       data: {
@@ -105,6 +110,7 @@ export async function POST(request: NextRequest) {
         unidadeMedida: unidadeNormalizada,
         minGrams: minNovo,
         preco: precoNovo,
+        statusEstoque,
       },
     });
 

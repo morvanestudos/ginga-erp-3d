@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
     const {
       cliente,
       peca,
+      pesoPecaGrams,
+      filamentoCor,
       custoFilamento,
       custoEnergia,
       custoHoraHomem,
@@ -72,6 +74,8 @@ export async function POST(request: NextRequest) {
       data: {
         cliente,
         peca,
+        pesoPecaGrams: parseFloat(String(pesoPecaGrams || 0)),
+        filamentoCor: filamentoCor ? String(filamentoCor).trim() : null,
         custoFilamento: parseFloat(custoFilamento),
         custoEnergia: parseFloat(custoEnergia),
         custoHoraHomem: parseFloat(custoHoraHomem),

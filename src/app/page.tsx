@@ -7,6 +7,9 @@ interface Pedido {
   id: string;
   cliente: string;
   peca: string;
+  pesoPecaGrams: number;
+  filamentoCor?: string;
+  estoqueBaixado?: boolean;
   custoFilamento: number;
   custoEnergia: number;
   custoHoraHomem: number;
@@ -22,6 +25,7 @@ interface Insumo {
   nome: string;
   tipo: "FILAMENTO" | "COLA" | "EMBALAGEM" | "OUTROS";
   cor?: string;
+  statusEstoque?: "NORMAL" | "ESTOQUE_BAIXO";
   quantidadeGrams: number;
   unidadeMedida: string;
   minGrams: number;
@@ -95,6 +99,7 @@ export default function Home() {
 
   const [nomeCliente, setNomeCliente] = useState<string>("");
   const [nomePeca, setNomePeca] = useState<string>("");
+  const [corFilamentoPedido, setCorFilamentoPedido] = useState<string>("");
   const [prazoEntrega, setPrazoEntrega] = useState<string>("");
 
   const [nomeInsumo, setNomeInsumo] = useState<string>("");
@@ -134,6 +139,10 @@ export default function Home() {
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [clientes, setClientes] = useState<ClienteLead[]>([]);
   const [catalogo, setCatalogo] = useState<CatalogoProduto[]>([]);
+  const [editandoInsumoId, setEditandoInsumoId] = useState<string | null>(null);
+  const [ajusteQtd, setAjusteQtd] = useState<number>(0);
+  const [ajustePreco, setAjustePreco] = useState<number>(0);
+  const [ajusteMin, setAjusteMin] = useState<number>(0);
   const [carregado, setCarregado] = useState<boolean>(false);
 
   useEffect(() => {
@@ -268,6 +277,8 @@ export default function Home() {
         body: JSON.stringify({
           cliente: nomeCliente,
           peca: nomePeca,
+          pesoPecaGrams: pesoPeca,
+          filamentoCor: corFilamentoPedido || null,
           custoFilamento,
           custoEnergia,
           custoHoraHomem,
@@ -337,6 +348,7 @@ export default function Home() {
 
       setNomeCliente("");
       setNomePeca("");
+      setCorFilamentoPedido("");
       setPrazoEntrega("");
     } catch (erro) {
       console.error("Erro ao criar pedido:", erro);
@@ -523,8 +535,31 @@ export default function Home() {
       });
 
       if (!res.ok) throw new Error("Erro ao atualizar status");
+      const dados = await res.json();
 
-      setPedidos((prev) => prev.map((p) => (p.id === id ? { ...p, status: novoStatus } : p)));
+      setPedidos((prev) =>
+        prev.map((p) => {
+          if (p.id !== id) return p;
+          const pedidoAtualizado = dados?.pedido || {};
+          return {
+            ...p,
+            status: novoStatus,
+            estoqueBaixado: Boolean(pedidoAtualizado.estoqueBaixado ?? p.estoqueBaixado),
+          };
+        })
+      );
+
+      if (novoStatus === "EM_IMPRESSAO") {
+        const insumosRes = await fetch("/api/insumos");
+        if (insumosRes.ok) {
+          const insumosData = await insumosRes.json();
+          setInsumos(insumosData || []);
+        }
+
+        if (dados?.estoqueAlerta) {
+          alert(dados.estoqueAlerta);
+        }
+      }
 
       if (novoStatus === "ENTREGUE") {
         const transacoesRes = await fetch("/api/transacoes");
@@ -574,6 +609,40 @@ export default function Home() {
     } catch (erro) {
       console.error("Erro ao deletar insumo:", erro);
       alert("Erro ao deletar insumo. Tente novamente.");
+    }
+  };
+
+  const handleIniciarAjusteInsumo = (item: Insumo) => {
+    setEditandoInsumoId(item.id);
+    setAjusteQtd(toNumber(item.quantidadeGrams));
+    setAjustePreco(toNumber(item.preco));
+    setAjusteMin(toNumber(item.minGrams));
+  };
+
+  const handleCancelarAjusteInsumo = () => {
+    setEditandoInsumoId(null);
+  };
+
+  const handleSalvarAjusteInsumo = async (id: string) => {
+    try {
+      const res = await fetch(`/api/insumos/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quantidadeGrams: ajusteQtd,
+          preco: ajustePreco,
+          minGrams: ajusteMin,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Erro ao ajustar insumo");
+      const atualizado = await res.json();
+
+      setInsumos((prev) => prev.map((item) => (item.id === id ? atualizado : item)));
+      setEditandoInsumoId(null);
+    } catch (erro) {
+      console.error("Erro ao ajustar insumo:", erro);
+      alert("Erro ao salvar ajuste do estoque.");
     }
   };
 
@@ -753,9 +822,10 @@ export default function Home() {
               </div>
               <form onSubmit={handleCriarPedido} className="border-t border-zinc-800 pt-4 mt-4 space-y-3">
                 <h3 className="text-sm font-bold text-pink-400 uppercase tracking-wider">Converter este cálculo em Pedido</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <input type="text" placeholder="Nome do Cliente" value={nomeCliente} onChange={(e) => setNomeCliente(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pink-500 text-zinc-100" />
                   <input type="text" placeholder="Nome do Produto" value={nomePeca} onChange={(e) => setNomePeca(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pink-500 text-zinc-100" />
+                  <input type="text" placeholder="Cor do Filamento (opcional)" value={corFilamentoPedido} onChange={(e) => setCorFilamentoPedido(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pink-500 text-zinc-100" />
                   <input type="date" value={prazoEntrega} onChange={(e) => setPrazoEntrega(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pink-500 text-zinc-100" />
                 </div>
                 <button type="submit" className="w-full bg-pink-600 hover:bg-pink-500 font-bold text-sm text-white py-2.5 rounded-lg transition-colors">✓ Adicionar à Esteira e Vincular CRM</button>
@@ -887,25 +957,71 @@ export default function Home() {
                     <th className="py-3 px-2">Cor</th>
                     <th className="py-3 px-2">Qtd Atual</th>
                     <th className="py-3 px-2">Preço</th>
+                    <th className="py-3 px-2">Mínimo</th>
                     <th className="py-3 px-2 text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/50">
                   {insumos.map((item) => {
-                    const estoqueBaixo = item.quantidadeGrams <= item.minGrams;
+                    const estoqueBaixo = (item.statusEstoque || "NORMAL") === "ESTOQUE_BAIXO" || item.quantidadeGrams <= item.minGrams;
+                    const emEdicao = editandoInsumoId === item.id;
                     return (
                       <tr key={item.id} className="hover:bg-zinc-800/20 transition-colors">
                         <td className="py-4 px-2 font-semibold text-zinc-200">{item.nome}</td>
                         <td className="py-4 px-2 text-xs text-zinc-400">{item.tipo}</td>
                         <td className="py-4 px-2 text-zinc-300">{item.cor || "—"}</td>
-                        <td className="py-4 px-2 font-mono text-zinc-200">{item.quantidadeGrams} {item.unidadeMedida?.toLowerCase?.() || "g"}</td>
-                        <td className="py-4 px-2 text-zinc-400">R$ {toNumber(item.preco).toFixed(2)}</td>
+                        <td className="py-4 px-2 font-mono text-zinc-200">
+                          {emEdicao ? (
+                            <input
+                              type="number"
+                              value={ajusteQtd}
+                              onChange={(e) => setAjusteQtd(Number(e.target.value))}
+                              className="w-24 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100"
+                            />
+                          ) : (
+                            <>
+                              {item.quantidadeGrams} {item.unidadeMedida?.toLowerCase?.() || "g"}
+                            </>
+                          )}
+                        </td>
+                        <td className="py-4 px-2 text-zinc-400">
+                          {emEdicao ? (
+                            <input
+                              type="number"
+                              value={ajustePreco}
+                              onChange={(e) => setAjustePreco(Number(e.target.value))}
+                              className="w-24 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100"
+                            />
+                          ) : (
+                            <>R$ {toNumber(item.preco).toFixed(2)}</>
+                          )}
+                        </td>
+                        <td className="py-4 px-2 text-zinc-400">
+                          {emEdicao ? (
+                            <input
+                              type="number"
+                              value={ajusteMin}
+                              onChange={(e) => setAjusteMin(Number(e.target.value))}
+                              className="w-20 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100"
+                            />
+                          ) : (
+                            <>{item.minGrams}</>
+                          )}
+                        </td>
                         <td className="py-4 px-2 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {estoqueBaixo ? (
                               <span className="bg-rose-500/10 text-rose-400 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">Abastecer!</span>
                             ) : (
                               <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">Normal</span>
+                            )}
+                            {emEdicao ? (
+                              <>
+                                <button onClick={() => handleSalvarAjusteInsumo(item.id)} className="text-emerald-400 hover:text-emerald-300 text-xs">Salvar</button>
+                                <button onClick={handleCancelarAjusteInsumo} className="text-zinc-400 hover:text-zinc-300 text-xs">Cancelar</button>
+                              </>
+                            ) : (
+                              <button onClick={() => handleIniciarAjusteInsumo(item)} className="text-sky-400 hover:text-sky-300 text-xs">✏️ Ajustar</button>
                             )}
                             <button onClick={() => handleDeletarInsumo(item.id)} className="text-zinc-500 hover:text-rose-400 text-xs">✕</button>
                           </div>
