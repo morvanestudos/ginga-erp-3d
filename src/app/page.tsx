@@ -87,7 +87,7 @@ export default function Home() {
   const [precoRolo, setPrecoRolo] = useState<number>(95);
   const [pesoRolo] = useState<number>(1000);
   const [potenciaMaquina] = useState<number>(150);
-  const [precoKwh, setPrecoKwh] = useState<number>(1.18);
+  const [precoKwh] = useState<number>(1.18);
   const [valorHoraHomem, setValorHoraHomem] = useState<number>(8);
   const [taxaManutencao, setTaxaManutencao] = useState<number>(12);
   const [custoEmbalagem] = useState<number>(5.0);
@@ -129,9 +129,6 @@ export default function Home() {
   const [catTempo, setCatTempo] = useState<number>(4);
   const [catCategoria, setCatCategoria] = useState<string>("Action Figures");
   const [catLinkStl, setCatLinkStl] = useState<string>("");
-  // Variável de estado para qual produto do catálogo será usado na produção rápida
-  const [produtoRapidoId, setProdutoRapidoId] = useState<string | null>(null);
-
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
@@ -198,9 +195,9 @@ export default function Home() {
   const precoVendaAtual = custoTotalAtual + valorLucroAtual;
 
   // Converter para números para evitar erros de cálculo
-  const toNumber = (val: any): number => {
-    if (typeof val === 'number') return val;
-    if (typeof val === 'string') return parseFloat(val) || 0;
+  const toNumber = (val: unknown): number => {
+    if (typeof val === "number") return val;
+    if (typeof val === "string") return parseFloat(val) || 0;
     return 0;
   };
 
@@ -214,10 +211,6 @@ export default function Home() {
   const totalMovimentado = totalEntradasCaixa + totalSaidasCaixa;
   const pctEntradas = totalMovimentado > 0 ? (totalEntradasCaixa / totalMovimentado) * 100 : 0;
   const pctSaidas = totalMovimentado > 0 ? (totalSaidasCaixa / totalMovimentado) * 100 : 0;
-  const pctComprometimento = totalEntradasCaixa > 0 ? (totalSaidasCaixa / totalEntradasCaixa) * 100 : 0;
-  const taxaLucratividadeOperacional = totalEntradasCaixa > 0 ? Math.max(0, Math.min(100, (saldoCaixaReal / totalEntradasCaixa) * 100)) : 0;
-  const balancoMensalPercent = totalMovimentado > 0 ? Math.max(0, Math.min(100, ((saldoCaixaReal / totalMovimentado) * 100 + 100) / 2)) : 50;
-
   const saldoPorCategoria = (categoria: string): number => {
     return transacoes
       .filter((t) => t.categoria === categoria)
