@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
+
+const buildStatusEstoque = (
+  quantidade: number,
+  minimo: number
+): Prisma.InsumoUncheckedCreateInput["statusEstoque"] => {
+  return quantidade <= minimo ? "ESTOQUE_BAIXO" : "NORMAL";
+};
 
 /**
  * GET /api/insumos
@@ -81,7 +89,7 @@ export async function POST(request: NextRequest) {
           ? ((precoAtual * quantidadeAtual) + (precoNovo * quantidadeNova)) / novaQuantidadeTotal
           : precoNovo;
 
-      const statusEstoque = novaQuantidadeTotal <= minNovo ? "ESTOQUE_BAIXO" : "NORMAL";
+      const statusEstoque = buildStatusEstoque(novaQuantidadeTotal, minNovo);
 
       const insumoAtualizado = await prisma.insumo.update({
         where: { id: insumoExistente.id },
@@ -99,7 +107,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(insumoAtualizado, { status: 200 });
     }
 
-    const statusEstoque = quantidadeNova <= minNovo ? "ESTOQUE_BAIXO" : "NORMAL";
+    const statusEstoque = buildStatusEstoque(quantidadeNova, minNovo);
 
     const novoInsumo = await prisma.insumo.create({
       data: {

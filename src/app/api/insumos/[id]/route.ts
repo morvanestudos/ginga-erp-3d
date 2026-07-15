@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 
 const toNumber = (value: unknown): number | null => {
@@ -6,7 +7,10 @@ const toNumber = (value: unknown): number | null => {
   return Number.isFinite(num) ? num : null;
 };
 
-const buildStatusEstoque = (quantidade: number, minimo: number): string => {
+const buildStatusEstoque = (
+  quantidade: number,
+  minimo: number
+): Prisma.InsumoUncheckedUpdateInput["statusEstoque"] => {
   return quantidade <= minimo ? "ESTOQUE_BAIXO" : "NORMAL";
 };
 
