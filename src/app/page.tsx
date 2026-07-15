@@ -419,6 +419,49 @@ export default function Home() {
     }
   };
 
+  const handleGerarLinkOrcamentoPedido = async () => {
+    if (!nomeCliente || !nomePeca || pesoPeca <= 0 || tempoImpressao <= 0) {
+      return alert("Preencha Nome do Cliente, Nome do Produto, Peso e Tempo para gerar o link.");
+    }
+
+    try {
+      const clienteExistente = clientes.find((c) => c.nome.toLowerCase() === nomeCliente.toLowerCase());
+      const whatsapp = clienteExistente?.contato?.trim() || "Nao informado";
+
+      const res = await fetch("/api/orcamentos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clienteNome: nomeCliente,
+          clienteWhatsapp: whatsapp,
+          pecaNome: nomePeca,
+          pesoGrams: pesoPeca,
+          tempoHoras: tempoImpressao,
+          custoMaterial: custoFilamento,
+          custoEnergia,
+          custoManutencao,
+          precoVenda: precoVendaAtual,
+          validadeDias: 7,
+          status: "PENDENTE",
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || "Erro ao gerar orçamento");
+      }
+
+      setOrcamentos((prev) => [data, ...prev]);
+
+      const link = `${window.location.origin}/orcamento/${data.token}`;
+      await navigator.clipboard.writeText(link);
+      alert("Link de orçamento copiado com sucesso! Já pode enviar pelo WhatsApp.");
+    } catch (erro) {
+      console.error("Erro ao gerar link de orçamento:", erro);
+      alert(erro instanceof Error ? erro.message : "Erro ao gerar link de orçamento.");
+    }
+  };
+
   const handleCriarInsumo = async (e: FormEvent) => {
     e.preventDefault();
     if (!nomeInsumo) return alert("Preencha o nome do insumo!");
@@ -967,7 +1010,16 @@ export default function Home() {
                   <input type="text" placeholder="Cor do Filamento (opcional)" value={corFilamentoPedido} onChange={(e) => setCorFilamentoPedido(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pink-500 text-zinc-100" />
                   <input type="date" value={prazoEntrega} onChange={(e) => setPrazoEntrega(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pink-500 text-zinc-100" />
                 </div>
-                <button type="submit" className="w-full bg-pink-600 hover:bg-pink-500 font-bold text-sm text-white py-2.5 rounded-lg transition-colors">✓ Adicionar à Esteira e Vincular CRM</button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button type="submit" className="w-full bg-pink-600 hover:bg-pink-500 font-bold text-sm text-white py-2.5 rounded-lg transition-colors">✓ Adicionar à Esteira e Vincular CRM</button>
+                  <button
+                    type="button"
+                    onClick={handleGerarLinkOrcamentoPedido}
+                    className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 font-bold text-sm text-zinc-100 py-2.5 rounded-lg transition-colors"
+                  >
+                    🔗 Gerar e Copiar Link para Cliente
+                  </button>
+                </div>
               </form>
             </div>
 
