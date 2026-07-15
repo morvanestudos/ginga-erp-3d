@@ -82,9 +82,26 @@ interface CatalogoProduto {
   linkStl?: string;
 }
 
+interface Orcamento {
+  id: string;
+  clienteNome: string;
+  clienteWhatsapp: string;
+  pecaNome: string;
+  pesoGrams: number;
+  tempoHoras: number;
+  custoMaterial: number;
+  custoEnergia: number;
+  custoManutencao: number;
+  precoVenda: number;
+  status: "PENDENTE" | "APROVADO" | "REJEITADO" | "EXPIRADO";
+  token: string;
+  validadeDias: number;
+  criadoEm: string;
+}
+
 export default function Home() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"pedidos" | "estoque" | "financeiro" | "clientes" | "catalogo">("pedidos");
+  const [activeTab, setActiveTab] = useState<"pedidos" | "estoque" | "financeiro" | "clientes" | "catalogo" | "orcamentos">("pedidos");
 
   const [pesoPeca, setPesoPeca] = useState<number>(100);
   const [tempoImpressao, setTempoImpressao] = useState<number>(4);
@@ -134,11 +151,25 @@ export default function Home() {
   const [catTempo, setCatTempo] = useState<number>(4);
   const [catCategoria, setCatCategoria] = useState<string>("Action Figures");
   const [catLinkStl, setCatLinkStl] = useState<string>("");
+
+  const [orcClienteNome, setOrcClienteNome] = useState<string>("");
+  const [orcClienteWhatsapp, setOrcClienteWhatsapp] = useState<string>("");
+  const [orcPecaNome, setOrcPecaNome] = useState<string>("");
+  const [orcPesoGrams, setOrcPesoGrams] = useState<number>(100);
+  const [orcTempoHoras, setOrcTempoHoras] = useState<number>(4);
+  const [orcMargem, setOrcMargem] = useState<number>(100);
+  const [orcValidadeDias, setOrcValidadeDias] = useState<number>(7);
+  const [orcCustoMaterial, setOrcCustoMaterial] = useState<number>(0);
+  const [orcCustoEnergia, setOrcCustoEnergia] = useState<number>(0);
+  const [orcCustoManutencao, setOrcCustoManutencao] = useState<number>(0);
+  const [orcPrecoVenda, setOrcPrecoVenda] = useState<number>(0);
+
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [clientes, setClientes] = useState<ClienteLead[]>([]);
   const [catalogo, setCatalogo] = useState<CatalogoProduto[]>([]);
+  const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [editandoInsumoId, setEditandoInsumoId] = useState<string | null>(null);
   const [ajusteQtd, setAjusteQtd] = useState<number>(0);
   const [ajustePreco, setAjustePreco] = useState<number>(0);
@@ -148,26 +179,28 @@ export default function Home() {
   useEffect(() => {
     const carregarDados = async () => {
       try {
-        const [pedidosRes, insumosRes, transacoesRes, clientesRes, catalogoRes, fechamentosRes] = await Promise.all([
+        const [pedidosRes, insumosRes, transacoesRes, clientesRes, catalogoRes, fechamentosRes, orcamentosRes] = await Promise.all([
           fetch("/api/pedidos"),
           fetch("/api/insumos"),
           fetch("/api/transacoes"),
           fetch("/api/clientes"),
           fetch("/api/catalogo"),
           fetch("/api/fechamentos"),
+          fetch("/api/orcamentos"),
         ]);
 
-        if (!pedidosRes.ok || !insumosRes.ok || !transacoesRes.ok || !clientesRes.ok || !catalogoRes.ok || !fechamentosRes.ok) {
+        if (!pedidosRes.ok || !insumosRes.ok || !transacoesRes.ok || !clientesRes.ok || !catalogoRes.ok || !fechamentosRes.ok || !orcamentosRes.ok) {
           throw new Error("Erro ao carregar dados do servidor");
         }
 
-        const [pedidosData, insumosData, transacoesData, clientesData, catalogoData, fechamentosData] = await Promise.all([
+        const [pedidosData, insumosData, transacoesData, clientesData, catalogoData, fechamentosData, orcamentosData] = await Promise.all([
           pedidosRes.json(),
           insumosRes.json(),
           transacoesRes.json(),
           clientesRes.json(),
           catalogoRes.json(),
           fechamentosRes.json(),
+          orcamentosRes.json(),
         ]);
 
         setPedidos(pedidosData || []);
@@ -176,6 +209,7 @@ export default function Home() {
         setClientes(clientesData || []);
         setCatalogo(catalogoData || []);
         setFechamentos(fechamentosData || []);
+        setOrcamentos(orcamentosData || []);
       } catch (erro) {
         console.error("Erro ao carregar dados:", erro);
         alert("Erro ao carregar dados do banco de dados. Verifique se o servidor está rodando.");
@@ -202,6 +236,33 @@ export default function Home() {
   const custoTotalAtual = custoFilamento + custoEnergia + custoHoraHomem + custoManutencao;
   const valorLucroAtual = custoTotalAtual * (margemLucro / 100);
   const precoVendaAtual = custoTotalAtual + valorLucroAtual;
+
+  const statusOrcamentoClass = (status: Orcamento["status"]) => {
+    if (status === "APROVADO") return "bg-emerald-500/10 text-emerald-400";
+    if (status === "REJEITADO") return "bg-rose-500/10 text-rose-400";
+    if (status === "EXPIRADO") return "bg-zinc-700/40 text-zinc-300";
+    return "bg-amber-500/10 text-amber-300";
+  };
+
+  const statusOrcamentoLabel = (status: Orcamento["status"]) => {
+    if (status === "APROVADO") return "Aprovado";
+    if (status === "REJEITADO") return "Rejeitado";
+    if (status === "EXPIRADO") return "Expirado";
+    return "Aguardando";
+  };
+
+  useEffect(() => {
+    const custoMaterialEstimado = orcPesoGrams * custoPorGrama;
+    const custoEnergiaEstimado = ((potenciaMaquina * orcTempoHoras) / 1000) * precoKwh;
+    const custoManutencaoEstimado = (custoMaterialEstimado + custoEnergiaEstimado) * (taxaManutencao / 100);
+    const base = custoMaterialEstimado + custoEnergiaEstimado + custoManutencaoEstimado;
+    const venda = base + base * (orcMargem / 100);
+
+    setOrcCustoMaterial(Number(custoMaterialEstimado.toFixed(2)));
+    setOrcCustoEnergia(Number(custoEnergiaEstimado.toFixed(2)));
+    setOrcCustoManutencao(Number(custoManutencaoEstimado.toFixed(2)));
+    setOrcPrecoVenda(Number(venda.toFixed(2)));
+  }, [orcPesoGrams, orcTempoHoras, orcMargem, custoPorGrama, potenciaMaquina, precoKwh, taxaManutencao]);
 
   // Converter para números para evitar erros de cálculo
   const toNumber = (val: unknown): number => {
@@ -714,6 +775,60 @@ export default function Home() {
     }
   };
 
+  const handleCriarOrcamento = async (e: FormEvent) => {
+    e.preventDefault();
+
+    if (!orcClienteNome || !orcClienteWhatsapp || !orcPecaNome) {
+      return alert("Nome do cliente, WhatsApp e nome do modelo são obrigatórios.");
+    }
+
+    try {
+      const res = await fetch("/api/orcamentos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clienteNome: orcClienteNome,
+          clienteWhatsapp: orcClienteWhatsapp,
+          pecaNome: orcPecaNome,
+          pesoGrams: orcPesoGrams,
+          tempoHoras: orcTempoHoras,
+          custoMaterial: orcCustoMaterial,
+          custoEnergia: orcCustoEnergia,
+          custoManutencao: orcCustoManutencao,
+          precoVenda: orcPrecoVenda,
+          validadeDias: orcValidadeDias,
+          status: "PENDENTE",
+        }),
+      });
+
+      if (!res.ok) throw new Error("Erro ao criar orçamento");
+      const novoOrcamento = await res.json();
+
+      setOrcamentos((prev) => [novoOrcamento, ...prev]);
+      setOrcClienteNome("");
+      setOrcClienteWhatsapp("");
+      setOrcPecaNome("");
+      setOrcPesoGrams(100);
+      setOrcTempoHoras(4);
+      setOrcValidadeDias(7);
+      alert("✓ Orçamento criado e pronto para envio.");
+    } catch (erro) {
+      console.error("Erro ao criar orçamento:", erro);
+      alert("Erro ao criar orçamento. Tente novamente.");
+    }
+  };
+
+  const handleCopiarLinkOrcamento = async (token: string) => {
+    try {
+      const link = `${window.location.origin}/orcamento/${token}`;
+      await navigator.clipboard.writeText(link);
+      alert("Link copiado para a área de transferência.");
+    } catch (erro) {
+      console.error("Erro ao copiar link:", erro);
+      alert("Não foi possível copiar o link.");
+    }
+  };
+
   const handleDeletarCatalogoProduto = async (id: string) => {
     try {
       const res = await fetch(`/api/catalogo/${id}`, { method: "DELETE" });
@@ -763,6 +878,7 @@ export default function Home() {
             <button onClick={() => setActiveTab("financeiro")} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === "financeiro" ? "bg-pink-600 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>💰 Finanças</button>
             <button onClick={() => setActiveTab("clientes")} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === "clientes" ? "bg-pink-600 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>👥 Clientes & Leads</button>
             <button onClick={() => setActiveTab("catalogo")} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === "catalogo" ? "bg-pink-600 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>🗂️ Catálogo</button>
+            <button onClick={() => setActiveTab("orcamentos")} className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${activeTab === "orcamentos" ? "bg-pink-600 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>📋 Orçamentos</button>
           </div>
           <button
             type="button"
@@ -1349,6 +1465,175 @@ export default function Home() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "orcamentos" && (
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4 h-fit">
+            <h2 className="text-xl font-bold text-zinc-200 border-b border-zinc-800 pb-2">📋 Calculadora de Orçamentos</h2>
+            <form onSubmit={handleCriarOrcamento} className="space-y-3">
+              <input
+                type="text"
+                placeholder="Nome do Cliente"
+                value={orcClienteNome}
+                onChange={(e) => setOrcClienteNome(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pink-500 text-zinc-100"
+              />
+              <input
+                type="text"
+                placeholder="WhatsApp do Cliente"
+                value={orcClienteWhatsapp}
+                onChange={(e) => setOrcClienteWhatsapp(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pink-500 text-zinc-100"
+              />
+              <input
+                type="text"
+                placeholder="Nome do Modelo 3D"
+                value={orcPecaNome}
+                onChange={(e) => setOrcPecaNome(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pink-500 text-zinc-100"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Peso (g)"
+                  value={orcPesoGrams}
+                  onChange={(e) => setOrcPesoGrams(Number(e.target.value))}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none text-zinc-100"
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Tempo (h)"
+                  value={orcTempoHoras}
+                  onChange={(e) => setOrcTempoHoras(Number(e.target.value))}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none text-zinc-100"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-400 uppercase mb-1">Margem (%)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    value={orcMargem}
+                    onChange={(e) => setOrcMargem(Number(e.target.value))}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none text-zinc-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-400 uppercase mb-1">Validade (dias)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={orcValidadeDias}
+                    onChange={(e) => setOrcValidadeDias(Number(e.target.value))}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none text-zinc-100"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 space-y-2">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-zinc-400">Custos sugeridos</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={orcCustoMaterial}
+                    onChange={(e) => setOrcCustoMaterial(Number(e.target.value))}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-100"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={orcCustoEnergia}
+                    onChange={(e) => setOrcCustoEnergia(Number(e.target.value))}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-100"
+                  />
+                </div>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={orcCustoManutencao}
+                  onChange={(e) => setOrcCustoManutencao(Number(e.target.value))}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-100"
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  value={orcPrecoVenda}
+                  onChange={(e) => setOrcPrecoVenda(Number(e.target.value))}
+                  className="w-full bg-zinc-950 border border-pink-500/30 rounded px-2 py-2 text-sm font-bold text-zinc-100"
+                />
+                <div className="text-[11px] text-zinc-500 grid grid-cols-2 gap-2">
+                  <span>Material</span>
+                  <span>Energia</span>
+                  <span>Manutenção</span>
+                  <span className="text-pink-400">Preço final</span>
+                </div>
+              </div>
+
+              <button type="submit" className="w-full bg-pink-600 hover:bg-pink-500 font-bold text-sm text-white py-2.5 rounded-lg transition-colors">
+                ✓ Gerar Orçamento
+              </button>
+            </form>
+          </div>
+
+          <div className="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-zinc-200 border-b border-zinc-800 pb-4 mb-4">📋 Orçamentos Gerados</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-zinc-800 text-zinc-400 text-xs uppercase">
+                    <th className="py-3 px-2">Cliente</th>
+                    <th className="py-3 px-2">Modelo</th>
+                    <th className="py-3 px-2">Peso/Tempo</th>
+                    <th className="py-3 px-2">Valor</th>
+                    <th className="py-3 px-2">Status</th>
+                    <th className="py-3 px-2 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/50">
+                  {orcamentos.map((item) => (
+                    <tr key={item.id} className="hover:bg-zinc-800/20 transition-colors">
+                      <td className="py-4 px-2">
+                        <p className="text-zinc-200 font-semibold">{item.clienteNome}</p>
+                        <p className="text-[11px] text-zinc-500">{item.clienteWhatsapp}</p>
+                      </td>
+                      <td className="py-4 px-2 text-zinc-300">{item.pecaNome}</td>
+                      <td className="py-4 px-2 text-zinc-400 text-xs">
+                        {toNumber(item.pesoGrams).toFixed(1)}g / {toNumber(item.tempoHoras).toFixed(1)}h
+                      </td>
+                      <td className="py-4 px-2 text-emerald-400 font-bold">R$ {toNumber(item.precoVenda).toFixed(2)}</td>
+                      <td className="py-4 px-2">
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${statusOrcamentoClass(item.status)}`}>
+                          {statusOrcamentoLabel(item.status)}
+                        </span>
+                      </td>
+                      <td className="py-4 px-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleCopiarLinkOrcamento(item.token)}
+                          className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded"
+                        >
+                          🔗 Copiar Link
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {orcamentos.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 px-2 text-center text-zinc-500 text-sm">
+                        Nenhum orçamento criado ainda.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

@@ -131,6 +131,27 @@ model FechamentoCaixa {
   @@index([dataFim])
 }
 
+model Orcamento {
+  id              String   @id @default(cuid())
+  clienteNome     String
+  clienteWhatsapp String
+  pecaNome        String
+  pesoGrams       Float
+  tempoHoras      Float
+  custoMaterial   Float
+  custoEnergia    Float
+  custoManutencao Float
+  precoVenda      Float
+  status          String   @default("PENDENTE") // PENDENTE | APROVADO | REJEITADO | EXPIRADO
+  token           String   @unique @default(uuid())
+  validadeDias    Int      @default(7)
+  criadoEm        DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
+  @@index([criadoEm])
+}
+
 model Usuario {
   id        String   @id @default(cuid())
   nome      String

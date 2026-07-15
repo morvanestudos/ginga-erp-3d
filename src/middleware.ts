@@ -8,6 +8,11 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get(TOKEN_NAME)?.value;
   const isAuthPage = pathname === "/login" || pathname === "/cadastro";
   const isDashboard = pathname === "/";
+  const isPublicRoute = pathname.startsWith("/orcamento/");
+
+  if (isPublicRoute) {
+    return NextResponse.next();
+  }
 
   if (isDashboard && !token) {
     return NextResponse.redirect(new URL("/login", request.url));
@@ -21,5 +26,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/login", "/cadastro"],
+  matcher: ["/", "/login", "/cadastro", "/orcamento/:path*"],
 };
