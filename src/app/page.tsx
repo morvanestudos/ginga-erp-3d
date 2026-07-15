@@ -874,9 +874,9 @@ export default function Home() {
     }
   };
 
-  const handleConverterOrcamento = async (id: string) => {
+  const handleConverterOrcamento = async (token: string) => {
     try {
-      const res = await fetch(`/api/orcamentos/${id}/converter`, {
+      const res = await fetch(`/api/orcamentos/${token}/converter`, {
         method: "POST",
       });
 
@@ -886,7 +886,7 @@ export default function Home() {
         throw new Error(data?.error || "Erro ao converter orçamento");
       }
 
-      setOrcamentos((prev) => prev.map((item) => (item.id === id ? data.orcamento : item)));
+      setOrcamentos((prev) => prev.map((item) => (item.token === token ? data.orcamento : item)));
       setPedidos((prev) => [data.pedido, ...prev]);
       alert("✓ Orçamento convertido em pedido com sucesso.");
     } catch (erro) {
@@ -1694,7 +1694,7 @@ export default function Home() {
                           {item.status === "APROVADO" && (
                             <button
                               type="button"
-                              onClick={() => handleConverterOrcamento(item.id)}
+                              onClick={() => handleConverterOrcamento(item.token)}
                               className="text-xs bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-3 py-1.5 rounded"
                             >
                               📦 Converter em Pedido

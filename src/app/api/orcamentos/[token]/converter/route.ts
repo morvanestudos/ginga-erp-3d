@@ -19,17 +19,13 @@ function adicionarDiasUteis(base: Date, diasUteis: number): Date {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { token } = await params;
 
     const resultado = await prisma.$transaction(async (tx) => {
-      let orcamento = await tx.orcamento.findUnique({ where: { id } });
-
-      if (!orcamento) {
-        orcamento = await tx.orcamento.findUnique({ where: { token: id } });
-      }
+      const orcamento = await tx.orcamento.findUnique({ where: { token } });
 
       if (!orcamento) {
         throw new Error("ORCAMENTO_NAO_ENCONTRADO");
