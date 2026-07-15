@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
-type StatusOrcamento = "PENDENTE" | "APROVADO" | "REJEITADO" | "EXPIRADO";
+type StatusOrcamento = "PENDENTE" | "APROVADO" | "REJEITADO" | "EXPIRADO" | "CONVERTIDO";
 
 interface OrcamentoPublico {
   id: string;
@@ -27,6 +27,7 @@ const statusLabel: Record<StatusOrcamento, string> = {
   APROVADO: "Aprovado",
   REJEITADO: "Recusado",
   EXPIRADO: "Expirado",
+  CONVERTIDO: "Convertido em Pedido",
 };
 
 const statusClass: Record<StatusOrcamento, string> = {
@@ -34,6 +35,7 @@ const statusClass: Record<StatusOrcamento, string> = {
   APROVADO: "bg-emerald-500/15 text-emerald-300 border-emerald-400/30",
   REJEITADO: "bg-rose-500/15 text-rose-300 border-rose-400/30",
   EXPIRADO: "bg-zinc-700/40 text-zinc-200 border-zinc-500/40",
+  CONVERTIDO: "bg-cyan-500/15 text-cyan-300 border-cyan-400/30",
 };
 
 export default function OrcamentoPublicoPage() {

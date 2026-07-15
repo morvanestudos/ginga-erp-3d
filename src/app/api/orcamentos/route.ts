@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-const STATUS_VALIDO = new Set(["PENDENTE", "APROVADO", "REJEITADO", "EXPIRADO"]);
+const STATUS_VALIDO = new Set(["PENDENTE", "APROVADO", "REJEITADO", "EXPIRADO", "CONVERTIDO"]);
 
 export async function GET(request: NextRequest) {
   try {

@@ -142,7 +142,7 @@ model Orcamento {
   custoEnergia    Float
   custoManutencao Float
   precoVenda      Float
-  status          String   @default("PENDENTE") // PENDENTE | APROVADO | REJEITADO | EXPIRADO
+  status          String   @default("PENDENTE") // PENDENTE | APROVADO | REJEITADO | EXPIRADO | CONVERTIDO
   token           String   @unique @default(uuid())
   validadeDias    Int      @default(7)
   criadoEm        DateTime @default(now())

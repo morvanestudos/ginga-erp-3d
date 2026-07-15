@@ -93,7 +93,7 @@ interface Orcamento {
   custoEnergia: number;
   custoManutencao: number;
   precoVenda: number;
-  status: "PENDENTE" | "APROVADO" | "REJEITADO" | "EXPIRADO";
+  status: "PENDENTE" | "APROVADO" | "REJEITADO" | "EXPIRADO" | "CONVERTIDO";
   token: string;
   validadeDias: number;
   criadoEm: string;
@@ -241,6 +241,7 @@ export default function Home() {
     if (status === "APROVADO") return "bg-emerald-500/10 text-emerald-400";
     if (status === "REJEITADO") return "bg-rose-500/10 text-rose-400";
     if (status === "EXPIRADO") return "bg-zinc-700/40 text-zinc-300";
+    if (status === "CONVERTIDO") return "bg-cyan-500/10 text-cyan-300";
     return "bg-amber-500/10 text-amber-300";
   };
 
@@ -248,6 +249,7 @@ export default function Home() {
     if (status === "APROVADO") return "Aprovado";
     if (status === "REJEITADO") return "Rejeitado";
     if (status === "EXPIRADO") return "Expirado";
+    if (status === "CONVERTIDO") return "Convertido";
     return "Aguardando";
   };
 
@@ -826,6 +828,27 @@ export default function Home() {
     } catch (erro) {
       console.error("Erro ao copiar link:", erro);
       alert("Não foi possível copiar o link.");
+    }
+  };
+
+  const handleConverterOrcamento = async (id: string) => {
+    try {
+      const res = await fetch(`/api/orcamentos/${id}/converter`, {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Erro ao converter orçamento");
+      }
+
+      setOrcamentos((prev) => prev.map((item) => (item.id === id ? data.orcamento : item)));
+      setPedidos((prev) => [data.pedido, ...prev]);
+      alert("✓ Orçamento convertido em pedido com sucesso.");
+    } catch (erro) {
+      console.error("Erro ao converter orçamento:", erro);
+      alert(erro instanceof Error ? erro.message : "Erro ao converter orçamento.");
     }
   };
 
@@ -1615,13 +1638,24 @@ export default function Home() {
                         </span>
                       </td>
                       <td className="py-4 px-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleCopiarLinkOrcamento(item.token)}
-                          className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded"
-                        >
-                          🔗 Copiar Link
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {item.status === "APROVADO" && (
+                            <button
+                              type="button"
+                              onClick={() => handleConverterOrcamento(item.id)}
+                              className="text-xs bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-3 py-1.5 rounded"
+                            >
+                              📦 Converter em Pedido
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleCopiarLinkOrcamento(item.token)}
+                            className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded"
+                          >
+                            🔗 Copiar Link
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
