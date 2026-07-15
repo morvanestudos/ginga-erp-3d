@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
           unidadeMedida: unidadeNormalizada,
           cor: corNormalizada,
           statusEstoque,
-        },
+        } as never,
       });
 
       return NextResponse.json(insumoAtualizado, { status: 200 });
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
         minGrams: minNovo,
         preco: precoNovo,
         statusEstoque,
-      },
+      } as never,
     });
 
     return NextResponse.json(novoInsumo, { status: 201 });

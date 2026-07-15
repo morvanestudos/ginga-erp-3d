@@ -91,7 +91,7 @@ async function atualizarInsumo(
         minGrams: minNovo,
         preco: precoNovo,
         statusEstoque,
-      },
+      } as never,
     });
 
     return NextResponse.json(insumo);
